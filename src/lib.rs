@@ -13,6 +13,7 @@ use exif;
 
 use serde_json;
 use serde::{Serialize, Deserialize};
+use serde::de::{self,Visitor}; // for custom deserializer on Orientation
 
 const CAPTURE_TIME_FORMAT : &str = "%Y:%m:%d %H:%M:%S";
 
@@ -28,7 +29,6 @@ pub struct FileMetadataOfInterest {
 }
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
-#[derive(Deserialize)]
 pub enum Orientation {
     Normal = 1,
     Mirrored = 2,
@@ -54,15 +54,6 @@ pub fn orientation_as_u16( orientation: Orientation ) -> u16 {
     }
 }
 
-impl Serialize for Orientation {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer
-    {
-        serializer.serialize_u16(orientation_as_u16(*self))
-    }
-}
-
 impl TryFrom<u16> for Orientation {
     type Error = ();
 
@@ -78,6 +69,59 @@ impl TryFrom<u16> for Orientation {
             x if x == Orientation::QuarterRotationCW as u16 => Ok(Orientation::QuarterRotationCW),
             _ => Err(()),
         }
+    }
+}
+
+impl TryFrom<u64> for Orientation {
+    type Error = ();
+
+    fn try_from(v: u64) -> Result<Self, Self::Error> {
+        if v > u16::MAX as u64 {
+            return Err(());
+        }
+        match Orientation::try_from(v as u16) {
+            Ok(orientation) => Ok(orientation),
+            Err(_) => Err(())
+        }
+    }
+}
+
+struct OrientationVisitor;
+
+impl<'de> Visitor<'de> for OrientationVisitor {
+    type Value = Orientation;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an integer between 1 and 8")
+    }
+
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        match Orientation::try_from(value) {
+            Ok(orientation) => Ok(orientation),
+            Err(_) => Err(E::custom(format!("Could not deserialize to Orientation: {}", value)))
+        }
+    }
+}
+
+impl<'a> Deserialize<'a> for Orientation {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>
+    {
+        // All of the unsigned integer types forward to the u64 visitor anyways.
+        deserializer.deserialize_u64(OrientationVisitor)
+    }
+}
+
+impl Serialize for Orientation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        serializer.serialize_u16(orientation_as_u16(*self))
     }
 }
 

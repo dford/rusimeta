@@ -3,6 +3,7 @@ use std::path::Path;
 use std::fs;
 use serial_test::serial;
 use chrono;
+use chrono::Utc;
 
 #[derive(Debug)]
 struct TestFile<'a> {
@@ -40,6 +41,36 @@ fn get_expected_date_time( str: &str ) -> chrono::NaiveDateTime {
     chrono::NaiveDateTime::parse_from_str(str, CAPTURE_TIME_EXPECTATION_FORMAT).unwrap()
 }
 
+// These functions are a bit of code duplication, but having known-good versions
+// that panic on unexpected errors is useful for the integration tests.
+fn get_created_time( path_str: &str ) -> Option<chrono::DateTime<Utc>> {
+    let all_file_metadata = fs::metadata( Path::new(path_str) ).expect(format!("Couldn't get metadata for test file: {}",path_str).as_str());
+
+    if !all_file_metadata.is_file() {
+        panic!("Test path is not a file: {}",path_str);
+    }
+
+    if let Ok(created_time) = all_file_metadata.created() {
+        Some(chrono::DateTime::<Utc>::from( created_time ))
+    } else {
+        None
+    }
+}
+
+fn get_modified_time( path_str: &str ) -> Option<chrono::DateTime<Utc>> {
+    let all_file_metadata = fs::metadata( Path::new(path_str) ).expect(format!("Couldn't get metadata for test file: {}",path_str).as_str());
+
+    if !all_file_metadata.is_file() {
+        panic!("Test path is not a file: {}",path_str);
+    }
+
+    if let Ok(modified_time) = all_file_metadata.modified() {
+        Some(chrono::DateTime::<Utc>::from( modified_time ))
+    } else {
+        None
+    }
+}
+
 // Note for this expected data that created_time and modified_time
 // are going to be dependent on when and how the resource files are copied,
 // and it does not make sense to hard-code them in the expectation.
@@ -61,8 +92,8 @@ fn init_test_data() -> AllTestData<'static> {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "JAM19896.jpg".to_string(),
                     size: 953_458,
-                    created_time: None,
-                    modified_time: None,
+                    created_time: get_created_time("tests/resource/images1/JAM19896.jpg"),
+                    modified_time: get_modified_time("tests/resource/images1/JAM19896.jpg"),
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::Normal),
@@ -79,8 +110,8 @@ fn init_test_data() -> AllTestData<'static> {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "JAM26284.jpg".to_string(),
                     size: 574_207,
-                    created_time: None,
-                    modified_time: None,
+                    created_time: get_created_time("tests/resource/images1/JAM26284.jpg"),
+                    modified_time: get_modified_time("tests/resource/images1/JAM26284.jpg"),
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::Normal),
@@ -97,8 +128,8 @@ fn init_test_data() -> AllTestData<'static> {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "JAM26496.jpg".to_string(),
                     size: 353_914,
-                    created_time: None,
-                    modified_time: None,
+                    created_time: get_created_time("tests/resource/images2/JAM26496.jpg"),
+                    modified_time: get_modified_time("tests/resource/images2/JAM26496.jpg"),
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::Normal),
@@ -115,8 +146,8 @@ fn init_test_data() -> AllTestData<'static> {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "rotated_CCW90.jpg".to_string(),
                     size: 327_616,
-                    created_time: None,
-                    modified_time: None,
+                    created_time: get_created_time("tests/resource/images2/rotated_CCW90.jpg"),
+                    modified_time: get_modified_time("tests/resource/images2/rotated_CCW90.jpg"),
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::QuarterRotationCCW),
