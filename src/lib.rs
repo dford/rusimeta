@@ -3,12 +3,12 @@ use std::error;
 use std::error::Error;
 use std::fmt;
 use std::fs;
-use std::path;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
 
-use chrono::{DateTime, TimeZone, NaiveDateTime, Utc};
+use chrono;
+use chrono::Utc;
 use exif;
 
 use serde_json;

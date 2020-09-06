@@ -2,7 +2,7 @@ use rusimeta::*;
 use std::path::Path;
 use std::fs;
 use serial_test::serial;
-use chrono::{DateTime, TimeZone, NaiveDateTime, Utc};
+use chrono;
 
 #[derive(Debug)]
 struct TestFile<'a> {
