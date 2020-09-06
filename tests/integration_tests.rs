@@ -36,10 +36,6 @@ impl<'a> AllTestData<'a> {}
 
 const CAPTURE_TIME_EXPECTATION_FORMAT : &str = "%Y:%m:%d %H:%M:%S";
 
-fn get_default_timestamp() -> chrono::DateTime<Utc> {
-    chrono::DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc)
-}
-
 fn get_expected_date_time( str: &str ) -> chrono::NaiveDateTime {
     chrono::NaiveDateTime::parse_from_str(str, CAPTURE_TIME_EXPECTATION_FORMAT).unwrap()
 }
@@ -65,8 +61,8 @@ fn init_test_data() -> AllTestData<'static> {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "JAM19896.jpg".to_string(),
                     size: 953_458,
-                    created_time: get_default_timestamp(),
-                    modified_time: get_default_timestamp(),
+                    created_time: None,
+                    modified_time: None,
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::Normal),
@@ -83,8 +79,8 @@ fn init_test_data() -> AllTestData<'static> {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "JAM26284.jpg".to_string(),
                     size: 574_207,
-                    created_time: get_default_timestamp(),
-                    modified_time: get_default_timestamp(),
+                    created_time: None,
+                    modified_time: None,
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::Normal),
@@ -101,8 +97,8 @@ fn init_test_data() -> AllTestData<'static> {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "JAM26496.jpg".to_string(),
                     size: 353_914,
-                    created_time: get_default_timestamp(),
-                    modified_time: get_default_timestamp(),
+                    created_time: None,
+                    modified_time: None,
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::Normal),
@@ -113,14 +109,14 @@ fn init_test_data() -> AllTestData<'static> {
             },
         },
         INCOMPLETE_METADATA: TestFile {
-            path: "tests/resource/images/rotated_CCW90.jpg",
+            path: "tests/resource/images2/rotated_CCW90.jpg",
             expected_json_path: "tests/resource/images2/rotated_CCW90.json",
             expected_metadata: rusimeta::MetadataOfInterest {
                 file_metadata: rusimeta::FileMetadataOfInterest {
                     filename: "rotated_CCW90.jpg".to_string(),
                     size: 327_616,
-                    created_time: get_default_timestamp(),
-                    modified_time: get_default_timestamp(),
+                    created_time: None,
+                    modified_time: None,
                 },
                 image_metadata: rusimeta::ImageMetadataOfInterest {
                     orientation: Some(Orientation::QuarterRotationCCW),
@@ -148,7 +144,7 @@ fn single_file_with_complete_metadata_can_be_read_and_serialized_to_json()
 
     // WHEN the metadata is requested
     let result = rusimeta::run( cfg );
-    assert!(result.is_ok());
+    assert!(result.is_ok(),"{:?}",result.err());
 
     // THEN the JSON output is written and as expected; all fields are populated
     assert!(Path::new(td.COMPLETE_METADATA_1.expected_json_path()).exists());
@@ -168,7 +164,7 @@ fn single_file_with_incomplete_metadata_can_be_read_and_serialized_to_json()
 
     // WHEN the metadata is requested
     let result = rusimeta::run( cfg );
-    assert!(result.is_ok());
+    assert!(result.is_ok(),"{:?}",result.err());
 
     // THEN the JSON output is written and as expected; only the fields corresponding to the present input metadata are present
     assert!(Path::new(td.INCOMPLETE_METADATA.expected_json_path()).exists());
@@ -195,7 +191,7 @@ fn multiple_files_metadata_can_be_read_and_dumped_and_serialized_to_json()
 
     // WHEN the metadata is requested for all of these files
     let result = rusimeta::run( cfg );
-    assert!(result.is_ok());
+    assert!(result.is_ok(),"{:?}",result.err());
 
     // THEN the expected JSON output is written for each of the inputs
     for test_file in test_files {
@@ -227,7 +223,7 @@ fn duplicate_files_metadata_can_be_read_and_paths_can_be_absolute_or_relative()
 
     // WHEN the metadata is requested for all of these files
     let result = rusimeta::run( cfg );
-    assert!(result.is_ok());
+    assert!(result.is_ok(),"{:?}",result.err());
 
     // THEN the expected JSON output is written for each of the inputs, the same as if no duplicate paths had been provided
     assert!(Path::new(td.COMPLETE_METADATA_1.expected_json_path()).exists());
@@ -261,7 +257,7 @@ fn wrong_file_types_are_ignored()
 
     // WHEN the metadata is requested for all of these files
     let result = rusimeta::run( cfg );
-    assert!(result.is_ok());
+    assert!(result.is_ok(),"{:?}",result.err());
 
     // THEN the expected JSON output is written for each of the supported inputs, and the program does not panic
     assert!(Path::new(td.COMPLETE_METADATA_1.expected_json_path()).exists());
