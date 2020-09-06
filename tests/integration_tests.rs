@@ -129,8 +129,8 @@ fn init_test_data() -> AllTestData<'static> {
     }
 }
 
-const UNSUPPORTED_FILE_PATH_TEXT : &str = "resource/unsupported_files/notanimage.txt";
-const UNSUPPORTED_FILE_PATH_MUSIC : &str = "resource/unsupported_files/Edenal.mp3";
+const UNSUPPORTED_FILE_PATH_TEXT : &str = "tests/resource/unsupported_files/notanimage.txt";
+const UNSUPPORTED_FILE_PATH_MUSIC : &str = "tests/resource/unsupported_files/Edenal.mp3";
 
 // Tests are run serially because they may touch the same files and the result would be
 // a race condition on the filesystem if multiple tests tried to write to the same JSON file.

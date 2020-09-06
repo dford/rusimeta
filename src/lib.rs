@@ -16,16 +16,20 @@ use serde::{Serialize, Deserialize};
 
 const CAPTURE_TIME_FORMAT : &str = "%Y:%m:%d %H:%M:%S";
 
-// TODO: structs and members need to get marked up with traits for JSON ser/des
 #[derive(Debug,Clone,PartialEq)]
+#[derive(Serialize,Deserialize)]
 pub struct FileMetadataOfInterest {
     pub filename: String,
     pub size: u64, // in bytes
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_time: Option<chrono::DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub modified_time: Option<chrono::DateTime<Utc>>,
 }
 
 #[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Serialize,Deserialize)]
+#[serde(untagged)]
 pub enum Orientation {
     Normal = 1,
     Mirrored = 2,
@@ -56,14 +60,20 @@ impl TryFrom<u16> for Orientation {
 }
 
 #[derive(Debug,Clone,PartialEq)]
+#[derive(Serialize,Deserialize)]
 pub struct ImageMetadataOfInterest {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub orientation: Option<Orientation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub capture_time: Option<chrono::NaiveDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub camera_model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub camera_serial: Option<String>,
 }
 
 #[derive(Debug,Clone,PartialEq)]
+#[derive(Serialize,Deserialize)]
 pub struct MetadataOfInterest {
     pub file_metadata: FileMetadataOfInterest,
     pub image_metadata: ImageMetadataOfInterest,
@@ -75,40 +85,47 @@ pub struct Config {
 }
 
 pub fn run( config : Config ) -> Result<(), Box<dyn error::Error>> {
-    // TODO: actually write out the metadata instead of printing it
     for image_path in config.image_paths.iter() {
-        let metadata = read_metadata_of_interest( image_path )?;
-        println!("{:?}",metadata);
+        let maybe_metadata = read_metadata_of_interest( image_path );
+        if let Ok( metadata ) = maybe_metadata {
+            let path_stem_os = image_path.file_stem().expect("Couldn't get path stem!");
+            let path_parent_os = image_path.parent().expect("Couldn't get path parent!");
+            if let Some(path_stem) = path_stem_os.to_str() {
+                if let Some(path_parent) = path_parent_os.to_str() {
+                    let json_file_name : String = [path_stem, r".json"].iter().cloned().collect();
+                    let json_path = PathBuf::from( path_parent ).join( json_file_name );
+                    println!("JSON path is {}",json_path.to_string_lossy());
+                    if let Err(boxed_err) = write_json_metadata( &metadata, &json_path ) {
+                        eprintln!("Failed to write metadata to JSON for image at path: {}",image_path.to_string_lossy());
+                        eprintln!("Error details: {:?}",boxed_err);
+                    }
+                }
+            }
+        } else {
+            eprintln!("Failed to read metadata for image at path: {}",image_path.to_string_lossy());
+            eprintln!("Error details: {:?}",maybe_metadata.unwrap_err());
+        }
     }
 
     Ok(())
 }
 
-pub fn write_json_metadata( metadata: MetadataOfInterest ) -> Result<(), Box<dyn error::Error>> {
-    // TODO
-    Ok(())
+pub fn write_json_metadata( metadata: &MetadataOfInterest, path: &Path ) -> Result<(), Box<dyn error::Error>> {
+    let metadata_as_json = serde_json::to_string( metadata)?;
+    match fs::write( path, metadata_as_json ) {
+        Ok(good_write) => Ok(good_write),
+        Err(unboxed_err) => Err(Box::new(unboxed_err))
+    }
 }
 
 pub fn read_json_metadata( path : &str ) -> Result<MetadataOfInterest, Box<dyn error::Error>> {
-    // TODO
-    let file_metadata = FileMetadataOfInterest {
-        filename: "".to_string(),
-        size: 0,
-        created_time: None,
-        modified_time: None,
-    };
-
-    let image_metadata = ImageMetadataOfInterest {
-        orientation: None,
-        capture_time: None,
-        camera_model: None,
-        camera_serial: None,
-    };
-
-    Ok(MetadataOfInterest {
-        file_metadata,
-        image_metadata
-    })
+    let contents = fs::read( path )?;
+    let as_str = str::from_utf8( &contents )?;
+    let try_deserialize : serde_json::Result<MetadataOfInterest> = serde_json::from_str( as_str );
+    match try_deserialize {
+        Ok(metadata) => Ok(metadata),
+        Err(unboxed_err) => Err(Box::new(unboxed_err))
+    }
 }
 
 #[derive(Debug, Clone)]
