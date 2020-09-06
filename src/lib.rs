@@ -27,9 +27,8 @@ pub struct FileMetadataOfInterest {
     pub modified_time: Option<chrono::DateTime<Utc>>,
 }
 
-#[derive(Debug,Clone,PartialEq,Eq)]
-#[derive(Serialize,Deserialize)]
-#[serde(untagged)]
+#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+#[derive(Deserialize)]
 pub enum Orientation {
     Normal = 1,
     Mirrored = 2,
@@ -39,6 +38,29 @@ pub enum Orientation {
     QuarterRotationCCW = 6,
     QuarterRotationCWMirrored = 7,
     QuarterRotationCW = 8,
+}
+
+// This is ugly but I'm not finding an easier way to get the number out of the enum.
+pub fn orientation_as_u16( orientation: Orientation ) -> u16 {
+    match orientation {
+        Orientation::Normal => 1,
+        Orientation::Mirrored => 2,
+        Orientation::UpsideDown => 3,
+        Orientation::UpsideDownMirrored => 4,
+        Orientation::QuarterRotationCCWMirrored => 5,
+        Orientation::QuarterRotationCCW => 6,
+        Orientation::QuarterRotationCWMirrored => 7,
+        Orientation::QuarterRotationCW => 8
+    }
+}
+
+impl Serialize for Orientation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        serializer.serialize_u16(orientation_as_u16(*self))
+    }
 }
 
 impl TryFrom<u16> for Orientation {
@@ -75,7 +97,9 @@ pub struct ImageMetadataOfInterest {
 #[derive(Debug,Clone,PartialEq)]
 #[derive(Serialize,Deserialize)]
 pub struct MetadataOfInterest {
+    #[serde(flatten)]
     pub file_metadata: FileMetadataOfInterest,
+    #[serde(flatten)]
     pub image_metadata: ImageMetadataOfInterest,
 }
 
@@ -94,7 +118,6 @@ pub fn run( config : Config ) -> Result<(), Box<dyn error::Error>> {
                 if let Some(path_parent) = path_parent_os.to_str() {
                     let json_file_name : String = [path_stem, r".json"].iter().cloned().collect();
                     let json_path = PathBuf::from( path_parent ).join( json_file_name );
-                    println!("JSON path is {}",json_path.to_string_lossy());
                     if let Err(boxed_err) = write_json_metadata( &metadata, &json_path ) {
                         eprintln!("Failed to write metadata to JSON for image at path: {}",image_path.to_string_lossy());
                         eprintln!("Error details: {:?}",boxed_err);
@@ -111,8 +134,8 @@ pub fn run( config : Config ) -> Result<(), Box<dyn error::Error>> {
 }
 
 pub fn write_json_metadata( metadata: &MetadataOfInterest, path: &Path ) -> Result<(), Box<dyn error::Error>> {
-    let metadata_as_json = serde_json::to_string( metadata)?;
-    match fs::write( path, metadata_as_json ) {
+    let metadata_as_json = serde_json::to_string_pretty(metadata)?;
+    match fs::write(path, metadata_as_json) {
         Ok(good_write) => Ok(good_write),
         Err(unboxed_err) => Err(Box::new(unboxed_err))
     }
